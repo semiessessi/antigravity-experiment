@@ -35,7 +35,11 @@ const colors = [
 // Function to create cube
 function createCube() {
     const geometry = new THREE.BoxGeometry(2, 2, 2);
-    const materials = colors.map(color => new THREE.MeshStandardMaterial({ color }));
+    const materials = colors.map(color => new THREE.MeshStandardMaterial({
+        color,
+        metalness: 0.3,
+        roughness: 0.4
+    }));
     return new THREE.Mesh(geometry, materials);
 }
 
@@ -150,10 +154,11 @@ function createDodecahedron() {
         }
     }
 
-    // Create materials - one per color
+    // Create materials - one per color with specular highlights
     const materials = colors.map(color => new THREE.MeshStandardMaterial({
         color,
-        flatShading: true
+        metalness: 0.3,
+        roughness: 0.4
     }));
 
     return new THREE.Mesh(geometry, materials);
@@ -163,17 +168,17 @@ function createDodecahedron() {
 let currentShape = createCube();
 scene.add(currentShape);
 
-// Add ambient light
-const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+// Add ambient light (low for high contrast)
+const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
 scene.add(ambientLight);
 
-// Add directional light for better shading
-const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+// Add directional light for better shading (increased intensity)
+const directionalLight = new THREE.DirectionalLight(0xffffff, 1.5);
 directionalLight.position.set(5, 5, 5);
 scene.add(directionalLight);
 
-// Add point light for dynamic lighting
-const pointLight = new THREE.PointLight(0x00d4ff, 1, 100);
+// Add point light for dynamic lighting (increased intensity)
+const pointLight = new THREE.PointLight(0x00d4ff, 2.0, 100);
 pointLight.position.set(0, 3, 3);
 scene.add(pointLight);
 
