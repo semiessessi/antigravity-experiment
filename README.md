@@ -11,6 +11,7 @@ A hardware-accelerated WebGL application that renders 3D geometric shapes with v
 ### 🎨 3D Shapes
 - **Cube** - Classic 6-faced shape with each face displaying a different color
 - **Dodecahedron** - 12-sided polyhedron where each pentagonal face is a solid color, with opposite faces matching
+- **Icosahedron** - 20-sided polyhedron with triangular faces, where opposite faces share the same color (10 unique colors for 10 pairs)
 
 ### ⚙️ Technical Capabilities
 - **Hardware Acceleration** - WebGL rendering with GPU acceleration for optimal performance
@@ -22,13 +23,20 @@ A hardware-accelerated WebGL application that renders 3D geometric shapes with v
 - **Responsive Design** - Adapts to window resizing
 
 ### 🎨 Color Palette
-Each shape uses a vibrant 6-color palette:
+The cube and dodecahedron use the original 6-color palette:
 - 🔴 Red
 - 🟢 Green
 - 🔵 Blue
 - 🔷 Cyan
 - 🟣 Magenta
 - 🟡 Yellow
+
+The icosahedron uses an expanded 10-color palette (for 10 opposite-face pairs):
+- All 6 colors above, plus:
+- 🟠 Orange
+- 🟣 Purple
+- 💚 Spring Green
+- 💗 Deep Pink
 
 ## How to Run
 

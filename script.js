@@ -29,7 +29,11 @@ const colors = [
     0x0000ff, // Blue
     0x00ffff, // Cyan
     0xff00ff, // Magenta
-    0xffff00  // Yellow
+    0xffff00, // Yellow
+    0xff8000, // Orange
+    0x8000ff, // Purple
+    0x00ff80, // Spring Green
+    0xff1493  // Deep Pink
 ];
 
 // Function to create cube
@@ -164,6 +168,86 @@ function createDodecahedron() {
     return new THREE.Mesh(geometry, materials);
 }
 
+// Function to create icosahedron with opposite faces having the same color
+function createIcosahedron() {
+    const geometry = new THREE.IcosahedronGeometry(1.5);
+
+    // Clear any existing groups
+    geometry.clearGroups();
+
+    const positionAttribute = geometry.getAttribute('position');
+    const faceCount = positionAttribute.count / 3; // 20 triangular faces
+
+    // Calculate face centers (normals)
+    const faces = [];
+    for (let i = 0; i < faceCount; i++) {
+        const idx = i * 3;
+        const center = new THREE.Vector3(
+            (positionAttribute.getX(idx) + positionAttribute.getX(idx + 1) + positionAttribute.getX(idx + 2)) / 3,
+            (positionAttribute.getY(idx) + positionAttribute.getY(idx + 1) + positionAttribute.getY(idx + 2)) / 3,
+            (positionAttribute.getZ(idx) + positionAttribute.getZ(idx + 1) + positionAttribute.getZ(idx + 2)) / 3
+        ).normalize();
+        faces.push({ index: i, normal: center });
+    }
+
+    // Pair opposite faces and assign colors
+    const colorAssignments = new Array(faceCount);
+    const used = new Set();
+    let colorIndex = 0;
+
+    for (let i = 0; i < faceCount; i++) {
+        if (used.has(i)) continue;
+
+        const face1 = faces[i];
+        used.add(i);
+
+        // Find opposite face (normal pointing in opposite direction)
+        let oppositeIdx = -1;
+        let minDot = 2;
+
+        for (let j = 0; j < faceCount; j++) {
+            if (used.has(j)) continue;
+
+            const dot = face1.normal.dot(faces[j].normal);
+            if (dot < minDot) {
+                minDot = dot;
+                oppositeIdx = j;
+            }
+        }
+
+        const color = colorIndex % colors.length;
+        colorAssignments[i] = color;
+
+        if (oppositeIdx !== -1) {
+            colorAssignments[oppositeIdx] = color;
+            used.add(oppositeIdx);
+        }
+
+        colorIndex++;
+    }
+
+    // Create geometry groups based on color assignments
+    const materialGroups = Array.from({ length: colors.length }, () => []);
+    for (let i = 0; i < colorAssignments.length; i++) {
+        materialGroups[colorAssignments[i]].push(i);
+    }
+
+    for (let colorIdx = 0; colorIdx < colors.length; colorIdx++) {
+        for (const faceIdx of materialGroups[colorIdx]) {
+            geometry.addGroup(faceIdx * 3, 3, colorIdx);
+        }
+    }
+
+    // Create materials with specular highlights
+    const materials = colors.map(color => new THREE.MeshStandardMaterial({
+        color,
+        metalness: 0.3,
+        roughness: 0.4
+    }));
+
+    return new THREE.Mesh(geometry, materials);
+}
+
 // Create initial shape (cube)
 let currentShape = createCube();
 scene.add(currentShape);
@@ -224,8 +308,10 @@ document.getElementById('shape-dropdown').addEventListener('change', (event) => 
     // Create new shape based on selection
     if (event.target.value === 'cube') {
         currentShape = createCube();
-    } else {
+    } else if (event.target.value === 'dodecahedron') {
         currentShape = createDodecahedron();
+    } else if (event.target.value === 'icosahedron') {
+        currentShape = createIcosahedron();
     }
 
     // Add new shape to scene
