@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D WebGL Cube - Hardware Accelerated</title>
+    <title>3D WebGL Shapes - Hardware Accelerated</title>
     <link rel="stylesheet" href="style.css">
 </head>
 
@@ -14,6 +14,14 @@
     <div id="fps-counter">
         <div>FPS</div>
         <div id="fps-value">60</div>
+    </div>
+
+    <div id="shape-selector">
+        <label for="shape-dropdown">Shape:</label>
+        <select id="shape-dropdown">
+            <option value="cube">Cube</option>
+            <option value="dodecahedron">Dodecahedron</option>
+        </select>
     </div>
 
     <div class="info-panel">

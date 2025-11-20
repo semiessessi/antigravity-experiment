@@ -14,7 +14,7 @@ const camera = new THREE.PerspectiveCamera(
 camera.position.z = 5;
 
 // Renderer setup with hardware acceleration
-const renderer = new THREE.WebGLRenderer({ 
+const renderer = new THREE.WebGLRenderer({
     antialias: true,
     powerPreference: "high-performance"
 });
@@ -22,21 +22,146 @@ renderer.setSize(window.innerWidth, window.innerHeight);
 renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 
-// Create cube with different colored faces
-const geometry = new THREE.BoxGeometry(2, 2, 2);
-
-// Create materials for each face with different colors
-const materials = [
-    new THREE.MeshStandardMaterial({ color: 0xff0000 }), // Red
-    new THREE.MeshStandardMaterial({ color: 0x00ff00 }), // Green
-    new THREE.MeshStandardMaterial({ color: 0x0000ff }), // Blue
-    new THREE.MeshStandardMaterial({ color: 0x00ffff }), // Cyan
-    new THREE.MeshStandardMaterial({ color: 0xff00ff }), // Magenta
-    new THREE.MeshStandardMaterial({ color: 0xffff00 })  // Yellow
+// Color palette
+const colors = [
+    0xff0000, // Red
+    0x00ff00, // Green
+    0x0000ff, // Blue
+    0x00ffff, // Cyan
+    0xff00ff, // Magenta
+    0xffff00  // Yellow
 ];
 
-const cube = new THREE.Mesh(geometry, materials);
-scene.add(cube);
+// Function to create cube
+function createCube() {
+    const geometry = new THREE.BoxGeometry(2, 2, 2);
+    const materials = colors.map(color => new THREE.MeshStandardMaterial({ color }));
+    return new THREE.Mesh(geometry, materials);
+}
+
+// Function to create dodecahedron with opposite faces having the same color
+function createDodecahedron() {
+    const geometry = new THREE.DodecahedronGeometry(1.5);
+
+    // Clear any existing groups
+    geometry.clearGroups();
+
+    const positionAttribute = geometry.getAttribute('position');
+    const normalAttribute = geometry.getAttribute('normal');
+
+    // Calculate face normal for each triangle
+    const triangleData = [];
+    for (let i = 0; i < positionAttribute.count; i += 3) {
+        const normal = new THREE.Vector3(
+            (normalAttribute.getX(i) + normalAttribute.getX(i + 1) + normalAttribute.getX(i + 2)) / 3,
+            (normalAttribute.getY(i) + normalAttribute.getY(i + 1) + normalAttribute.getY(i + 2)) / 3,
+            (normalAttribute.getZ(i) + normalAttribute.getZ(i + 1) + normalAttribute.getZ(i + 2)) / 3
+        ).normalize();
+
+        triangleData.push({ index: i / 3, normal });
+    }
+
+    // Group triangles by their normal direction
+    // Triangles with the same normal belong to the same pentagonal face
+    const pentagonalFaces = [];
+    const used = new Set();
+
+    for (let i = 0; i < triangleData.length; i++) {
+        if (used.has(i)) continue;
+
+        const face = [i];
+        used.add(i);
+
+        // Find all triangles with very similar normals
+        for (let j = i + 1; j < triangleData.length; j++) {
+            if (used.has(j)) continue;
+
+            const dot = triangleData[i].normal.dot(triangleData[j].normal);
+            if (dot > 0.999) { // Very similar normals = same pentagonal face
+                face.push(j);
+                used.add(j);
+            }
+        }
+
+        pentagonalFaces.push({
+            triangles: face,
+            normal: triangleData[i].normal
+        });
+    }
+
+    // Now pair opposite faces and assign colors
+    // Opposite faces have normals pointing in opposite directions
+    const colorAssignments = new Array(triangleData.length);
+    const faceColorMap = new Map();
+    let colorIndex = 0;
+
+    for (let i = 0; i < pentagonalFaces.length; i++) {
+        if (faceColorMap.has(i)) continue;
+
+        const face1 = pentagonalFaces[i];
+
+        // Find the opposite face (normal pointing in opposite direction)
+        let oppositeIdx = -1;
+        let maxDot = -2;
+
+        for (let j = 0; j < pentagonalFaces.length; j++) {
+            if (i === j || faceColorMap.has(j)) continue;
+
+            const face2 = pentagonalFaces[j];
+            const dot = face1.normal.dot(face2.normal);
+
+            // Opposite faces have dot product close to -1
+            if (dot < -0.9 && dot > maxDot) {
+                maxDot = dot;
+                oppositeIdx = j;
+            }
+        }
+
+        // Assign the same color to this face and its opposite
+        const color = colorIndex % 6;
+
+        // Assign color to face1
+        for (const triIdx of face1.triangles) {
+            colorAssignments[triIdx] = color;
+        }
+        faceColorMap.set(i, color);
+
+        // Assign color to opposite face if found
+        if (oppositeIdx !== -1) {
+            for (const triIdx of pentagonalFaces[oppositeIdx].triangles) {
+                colorAssignments[triIdx] = color;
+            }
+            faceColorMap.set(oppositeIdx, color);
+        }
+
+        colorIndex++;
+    }
+
+    // Create geometry groups based on color assignments
+    const materialGroups = Array.from({ length: 6 }, () => []);
+    for (let i = 0; i < colorAssignments.length; i++) {
+        materialGroups[colorAssignments[i]].push(i);
+    }
+
+    // Add groups to geometry
+    for (let colorIdx = 0; colorIdx < 6; colorIdx++) {
+        for (const faceIdx of materialGroups[colorIdx]) {
+            geometry.addGroup(faceIdx * 3, 3, colorIdx);
+        }
+    }
+
+    // Create materials - one per color
+    const materials = colors.map(color => new THREE.MeshStandardMaterial({
+        color,
+        flatShading: true
+    }));
+
+    return new THREE.Mesh(geometry, materials);
+}
+
+// Create initial shape (cube)
+let currentShape = createCube();
+scene.add(currentShape);
 
 // Add ambient light
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
@@ -61,14 +186,14 @@ let fps = 60;
 function animate() {
     requestAnimationFrame(animate);
 
-    // Rotate the cube
-    cube.rotation.x += 0.01;
-    cube.rotation.y += 0.01;
+    // Rotate the current shape
+    currentShape.rotation.x += 0.01;
+    currentShape.rotation.y += 0.01;
 
     // Calculate FPS
     frames++;
     const currentTime = performance.now();
-    
+
     if (currentTime >= lastTime + 1000) {
         fps = Math.round((frames * 1000) / (currentTime - lastTime));
         document.getElementById('fps-value').textContent = fps;
@@ -84,6 +209,22 @@ window.addEventListener('resize', () => {
     camera.aspect = window.innerWidth / window.innerHeight;
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Handle shape selection
+document.getElementById('shape-dropdown').addEventListener('change', (event) => {
+    // Remove current shape
+    scene.remove(currentShape);
+
+    // Create new shape based on selection
+    if (event.target.value === 'cube') {
+        currentShape = createCube();
+    } else {
+        currentShape = createDodecahedron();
+    }
+
+    // Add new shape to scene
+    scene.add(currentShape);
 });
 
 // Start animation
