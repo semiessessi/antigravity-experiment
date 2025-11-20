@@ -133,6 +133,40 @@ This section documents the challenges and iterations encountered during developm
 4. Multiple light sources with proper intensities create much better visual results than single lights
 5. Material properties (`metalness`, `roughness`) are crucial for realistic rendering
 
+## Decision Attribution
+
+This project was a collaboration between the user and Antigravity. Here's who made which decisions:
+
+### 👤 User's Decisions (Requirements & Direction)
+- **Core Concept** - Hardware-accelerated 3D rendering webpage with real-time FPS counter
+- **Initial Shape** - Spinning multi-colored cube with 6 distinct colored faces
+- **Adding Dodecahedron** - Request to add a second shape with specific constraints
+- **Dodecahedron Requirements**:
+  - Each pentagonal face must be one solid color (not multi-colored from triangulation)
+  - All 6 colors must be used
+  - Opposite faces must have the same color
+- **Custom Shaders** - Request to try implementing custom GLSL shaders for better materials/lighting
+- **Lighting Enhancement** - Pointing out flat appearance and requesting improvements
+- **High Contrast** - Specific request to reduce ambient lighting to 0.1 or lower and increase contrast
+- **Transparency** - Requesting documentation of mistakes, retries, and decision attribution
+
+### 🤖 Antigravity's Decisions (Implementation Choices)
+- **Technology Stack** - Choosing Three.js as the WebGL library
+- **Color Palette** - Selecting the specific 6 colors (Red, Green, Blue, Cyan, Magenta, Yellow)
+- **UI Design** - Glassmorphic styling with backdrop filters and modern aesthetics
+- **Code Organization** - Separating into `index.html`, `style.css`, and `script.js`
+- **Dodecahedron Algorithm** - Using normal vector analysis to group triangles and pair opposite faces
+- **Lighting Setup** - Specific light types, positions, and cyan point light color choice
+- **Material Properties** - Adding `metalness: 0.3` and `roughness: 0.4` for specular highlights
+- **Specific Intensities** - Ambient (0.1), Directional (1.5), Point Light (2.0) values
+- **Error Recovery** - Strategy to revert to `MeshStandardMaterial` after shader failures
+- **Next Shape Suggestion** - Proposing icosahedron as the next addition
+
+### 🤝 Collaborative Decisions
+- **Git Workflow** - User requested commits/pushes, Antigravity chose commit messages and author attribution
+- **README Documentation** - User requested sections, Antigravity chose structure and content
+- **Shape Selector** - User implied need for switching, Antigravity chose dropdown implementation
+
 ## Author
 
 Created by **Antigravity** - AI coding assistant from Google DeepMind
