@@ -376,6 +376,52 @@ function createTeapot() {
 let currentShape = createCube();
 scene.add(currentShape);
 
+// Cloud mode variables
+let isCloudMode = false;
+let cloudGroup;
+let cloudCameraAngle = 0;
+
+// Function to create volumetric clouds using particle spheres
+function createClouds() {
+    cloudGroup = new THREE.Group();
+
+    // Create multiple cloud puffs
+    const cloudCount = 50;
+
+    for (let i = 0; i < cloudCount; i++) {
+        // Random position in 3D space
+        const x = (Math.random() - 0.5) * 40;
+        const y = (Math.random() - 0.5) * 20 + 5; // Bias upward
+        const z = (Math.random() - 0.5) * 40;
+
+        // Create cloud puff (group of spheres)
+        const puffSize = Math.random() * 2 + 1;
+        const puffCount = Math.floor(Math.random() * 5) + 3;
+
+        for (let j = 0; j < puffCount; j++) {
+            const geometry = new THREE.SphereGeometry(puffSize * (0.5 + Math.random() * 0.5), 8, 8);
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                transparent: true,
+                opacity: 0.6 + Math.random() * 0.3,
+                metalness: 0.1,
+                roughness: 0.9
+            });
+
+            const cloud = new THREE.Mesh(geometry, material);
+            cloud.position.set(
+                x + (Math.random() - 0.5) * puffSize * 2,
+                y + (Math.random() - 0.5) * puffSize * 2,
+                z + (Math.random() - 0.5) * puffSize * 2
+            );
+
+            cloudGroup.add(cloud);
+        }
+    }
+
+    return cloudGroup;
+}
+
 // Gun creation function
 function createGun() {
     const gunGroup = new THREE.Group();
@@ -789,8 +835,18 @@ function animate() {
             }
         }
     } else {
+        // Animate camera through clouds
+        if (isCloudMode) {
+            cloudCameraAngle += 0.002;
+            const radius = 20;
+            camera.position.x = Math.cos(cloudCameraAngle) * radius;
+            camera.position.z = Math.sin(cloudCameraAngle) * radius;
+            camera.position.y = 5 + Math.sin(cloudCameraAngle * 2) * 3;
+            camera.lookAt(0, 5, 0);
+        }
+
         // Rotate the current shape
-        if (currentShape) {
+        if (currentShape && !isCloudMode) {
             currentShape.rotation.x += 0.01;
             currentShape.rotation.y += 0.01;
         }
@@ -839,6 +895,12 @@ document.getElementById('shape-dropdown').addEventListener('change', (event) => 
         currentShape = createTorus();
     } else if (event.target.value === 'teapot') {
         currentShape = createTeapot();
+    } else if (event.target.value === 'clouds') {
+        isCloudMode = true;
+        currentShape = createClouds();
+        cloudCameraAngle = 0;
+        camera.position.set(0, 5, 15);
+        camera.lookAt(0, 5, 0);
     } else if (event.target.value === 'fps') {
         isFPSMode = true;
         currentShape = null; // No single shape in FPS mode
