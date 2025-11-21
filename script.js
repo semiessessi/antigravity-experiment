@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { TeapotGeometry } from 'three/addons/geometries/TeapotGeometry.js';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -248,6 +249,128 @@ function createIcosahedron() {
     return new THREE.Mesh(geometry, materials);
 }
 
+// Function to create octahedron with opposite faces having the same color
+function createOctahedron() {
+    const geometry = new THREE.OctahedronGeometry(1.5);
+
+    // Clear any existing groups
+    geometry.clearGroups();
+
+    const positionAttribute = geometry.getAttribute('position');
+    const faceCount = positionAttribute.count / 3; // 8 triangular faces
+
+    // Calculate face centers (normals)
+    const faces = [];
+    for (let i = 0; i < faceCount; i++) {
+        const idx = i * 3;
+        const center = new THREE.Vector3(
+            (positionAttribute.getX(idx) + positionAttribute.getX(idx + 1) + positionAttribute.getX(idx + 2)) / 3,
+            (positionAttribute.getY(idx) + positionAttribute.getY(idx + 1) + positionAttribute.getY(idx + 2)) / 3,
+            (positionAttribute.getZ(idx) + positionAttribute.getZ(idx + 1) + positionAttribute.getZ(idx + 2)) / 3
+        ).normalize();
+        faces.push({ index: i, normal: center });
+    }
+
+    // Pair opposite faces and assign colors
+    const colorAssignments = new Array(faceCount);
+    const used = new Set();
+    let colorIndex = 0;
+
+    for (let i = 0; i < faceCount; i++) {
+        if (used.has(i)) continue;
+
+        const face1 = faces[i];
+        used.add(i);
+
+        // Find opposite face
+        let oppositeIdx = -1;
+        let minDot = 2;
+
+        for (let j = 0; j < faceCount; j++) {
+            if (used.has(j)) continue;
+
+            const dot = face1.normal.dot(faces[j].normal);
+            if (dot < minDot) {
+                minDot = dot;
+                oppositeIdx = j;
+            }
+        }
+
+        const color = colorIndex % colors.length;
+        colorAssignments[i] = color;
+
+        if (oppositeIdx !== -1) {
+            colorAssignments[oppositeIdx] = color;
+            used.add(oppositeIdx);
+        }
+
+        colorIndex++;
+    }
+
+    // Create geometry groups
+    const materialGroups = Array.from({ length: colors.length }, () => []);
+    for (let i = 0; i < colorAssignments.length; i++) {
+        materialGroups[colorAssignments[i]].push(i);
+    }
+
+    for (let colorIdx = 0; colorIdx < colors.length; colorIdx++) {
+        for (const faceIdx of materialGroups[colorIdx]) {
+            geometry.addGroup(faceIdx * 3, 3, colorIdx);
+        }
+    }
+
+    const materials = colors.map(color => new THREE.MeshStandardMaterial({
+        color,
+        metalness: 0.3,
+        roughness: 0.4
+    }));
+
+    return new THREE.Mesh(geometry, materials);
+}
+
+// Function to create tetrahedron
+function createTetrahedron() {
+    const geometry = new THREE.TetrahedronGeometry(1.5);
+
+    // For tetrahedron, we can just assign a different color to each of the 4 faces
+    geometry.clearGroups();
+
+    // 4 faces, assign first 4 colors
+    for (let i = 0; i < 4; i++) {
+        geometry.addGroup(i * 3, 3, i);
+    }
+
+    const materials = colors.map(color => new THREE.MeshStandardMaterial({
+        color,
+        metalness: 0.3,
+        roughness: 0.4
+    }));
+
+    return new THREE.Mesh(geometry, materials);
+}
+
+// Function to create torus
+function createTorus() {
+    const geometry = new THREE.TorusGeometry(1.2, 0.4, 16, 100);
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x00d4ff, // Cyan-ish
+        metalness: 0.7,
+        roughness: 0.2
+    });
+    return new THREE.Mesh(geometry, material);
+}
+
+// Function to create teapot
+function createTeapot() {
+    const geometry = new TeapotGeometry(1, 15, true, true, true, false, true);
+    const material = new THREE.MeshStandardMaterial({
+        color: 0xffffff,
+        metalness: 0.9,
+        roughness: 0.1,
+    });
+    return new THREE.Mesh(geometry, material);
+}
+
 // Create initial shape (cube)
 let currentShape = createCube();
 scene.add(currentShape);
@@ -312,6 +435,14 @@ document.getElementById('shape-dropdown').addEventListener('change', (event) => 
         currentShape = createDodecahedron();
     } else if (event.target.value === 'icosahedron') {
         currentShape = createIcosahedron();
+    } else if (event.target.value === 'octahedron') {
+        currentShape = createOctahedron();
+    } else if (event.target.value === 'tetrahedron') {
+        currentShape = createTetrahedron();
+    } else if (event.target.value === 'torus') {
+        currentShape = createTorus();
+    } else if (event.target.value === 'teapot') {
+        currentShape = createTeapot();
     }
 
     // Add new shape to scene
