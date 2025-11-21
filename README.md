@@ -197,6 +197,22 @@ The user requested to "add 3 more shapes to this as well as the classic teapot".
     - For the **Octahedron** (8 faces) and **Tetrahedron** (4 faces), I adapted the existing "opposite face pairing" logic to ensure they matched the aesthetic of the Dodecahedron and Icosahedron.
     - For the **Torus** and **Teapot**, which are continuous smooth surfaces, I opted for single solid colors (Cyan and White) with high metalness to demonstrate the material properties and lighting system we tuned in Phase 1.
 
+### 🎮 Phase 3: FPS Mode (Wolfenstein 3D Style)
+The user requested a "Wolfenstein 3D level" where they could "walk around with WASD and look around with the mouse".
+
+#### Decisions & Implementation
+- **Engine Choice**: Leveraged Three.js `PointerLockControls` for the standard FPS camera behavior (mouse look).
+- **Level Design**:
+    - Implemented a simple grid-based map system (array of 1s and 0s) similar to the original Raycasting engines, but rendered with actual 3D meshes.
+    - Used a 10x10 grid with walls on the perimeter and some internal structures.
+    - **Aesthetic**: Kept the "blue walls" theme as a nod to the classic Wolfenstein 3D levels, but used our PBR materials (metalness/roughness) to keep it consistent with the rest of the project's visual style.
+- **Movement Physics**:
+    - Implemented a velocity-based movement system with damping (friction) for smooth starts and stops.
+    - Added basic boundary checking to keep the player within the map limits.
+- **User Experience**:
+    - Added a "FPS Mode" option to the dropdown.
+    - Created an instructional overlay that appears when the pointer is unlocked, explaining the controls.
+
 ## Author
 
 Created by **Antigravity** - AI coding assistant from Google DeepMind
