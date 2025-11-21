@@ -376,6 +376,118 @@ function createTeapot() {
 let currentShape = createCube();
 scene.add(currentShape);
 
+// Gun creation function
+function createGun() {
+    const gunGroup = new THREE.Group();
+
+    // Simple gun model (box)
+    const barrelGeo = new THREE.BoxGeometry(0.1, 0.1, 0.5);
+    const barrelMat = new THREE.MeshStandardMaterial({ color: 0x333333 });
+    const barrel = new THREE.Mesh(barrelGeo, barrelMat);
+    barrel.position.set(0.2, -0.2, -0.5);
+    gunGroup.add(barrel);
+
+    // Muzzle flash light
+    const flashLight = new THREE.PointLight(0xffaa00, 0, 5);
+    flashLight.position.set(0.2, -0.2, -0.75);
+    gunGroup.add(flashLight);
+    gunGroup.userData.flashLight = flashLight;
+
+    return gunGroup;
+}
+
+// Enemy creation function (Spiky Drone)
+function createEnemy(x, z) {
+    const enemyGroup = new THREE.Group();
+
+    // Central sphere
+    const sphereGeo = new THREE.SphereGeometry(0.4, 16, 16);
+    const sphereMat = new THREE.MeshStandardMaterial({
+        color: 0x111111,
+        metalness: 0.8,
+        roughness: 0.2
+    });
+    const sphere = new THREE.Mesh(sphereGeo, sphereMat);
+    enemyGroup.add(sphere);
+
+    // Spikes
+    const spikeGeo = new THREE.ConeGeometry(0.1, 0.6, 8);
+    const spikeMat = new THREE.MeshStandardMaterial({
+        color: 0xff0000,
+        emissive: 0xff0000,
+        emissiveIntensity: 0.5,
+        metalness: 0.5,
+        roughness: 0.5
+    });
+
+    const positions = [
+        [0, 1, 0], [0, -1, 0], [1, 0, 0], [-1, 0, 0], [0, 0, 1], [0, 0, -1]
+    ];
+
+    positions.forEach(pos => {
+        const spike = new THREE.Mesh(spikeGeo, spikeMat);
+        spike.position.set(pos[0] * 0.4, pos[1] * 0.4, pos[2] * 0.4);
+        spike.lookAt(0, 0, 0);
+        spike.rotateX(Math.PI);
+        enemyGroup.add(spike);
+    });
+
+    enemyGroup.position.set(x, 0, z);
+    scene.add(enemyGroup);
+
+    return {
+        mesh: enemyGroup,
+        health: 1,
+        speed: 2.0 + Math.random()
+    };
+}
+
+// Shooting function
+function shoot() {
+    if (performance.now() - lastShotTime < SHOT_COOLDOWN) return;
+    lastShotTime = performance.now();
+
+    // Visual feedback
+    if (gun) {
+        // Recoil
+        gun.position.z += 0.2;
+        setTimeout(() => {
+            if (gun) gun.position.z -= 0.2;
+        }, 100);
+
+        // Muzzle flash
+        gun.userData.flashLight.intensity = 2;
+        setTimeout(() => {
+            if (gun && gun.userData.flashLight) gun.userData.flashLight.intensity = 0;
+        }, 50);
+    }
+
+    // Raycast
+    raycaster.setFromCamera(center, camera);
+    const intersects = raycaster.intersectObjects(scene.children, true);
+
+    for (let i = 0; i < intersects.length; i++) {
+        const hitObject = intersects[i].object;
+        let parent = hitObject.parent;
+        while (parent) {
+            const enemyIndex = enemies.findIndex(e => e.mesh === parent);
+            if (enemyIndex !== -1) {
+                const enemy = enemies[enemyIndex];
+                scene.remove(enemy.mesh);
+                enemies.splice(enemyIndex, 1);
+                score += 100;
+                console.log("Enemy hit! Score:", score);
+                return;
+            }
+            parent = parent.parent;
+        }
+
+        if (levelMeshes.includes(hitObject)) {
+            return;
+        }
+    }
+}
+
 // Add ambient light (low for high contrast)
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.1);
 scene.add(ambientLight);
@@ -408,6 +520,21 @@ const direction = new THREE.Vector3();
 let controls;
 let levelMeshes = [];
 let isFPSMode = false;
+
+// Game State
+let gun;
+let enemies = [];
+let lastShotTime = 0;
+const SHOT_COOLDOWN = 250; // ms
+const ENEMY_SPAWN_RATE = 3000; // ms
+let lastEnemySpawnTime = 0;
+let score = 0;
+let isGameOver = false;
+
+// Raycaster for shooting
+const raycaster = new THREE.Raycaster();
+const center = new THREE.Vector2(0, 0); // Center of screen
+
 
 // Initialize PointerLockControls
 controls = new PointerLockControls(camera, document.body);
@@ -564,6 +691,60 @@ function animate() {
             if (controls.getObject().position.x > 9) controls.getObject().position.x = 9;
             if (controls.getObject().position.z < -9) controls.getObject().position.z = -9;
             if (controls.getObject().position.z > 9) controls.getObject().position.z = 9;
+
+            // Enemy Logic
+            const playerPos = controls.getObject().position;
+
+            // Spawn Enemies
+            if (time - lastEnemySpawnTime > ENEMY_SPAWN_RATE && enemies.length < 5) {
+                lastEnemySpawnTime = time;
+                let x, z;
+                do {
+                    x = (Math.random() - 0.5) * 18;
+                    z = (Math.random() - 0.5) * 18;
+                } while (Math.abs(x - playerPos.x) < 5 && Math.abs(z - playerPos.z) < 5);
+
+                enemies.push(createEnemy(x, z));
+            }
+
+            // Move Enemies
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                const enemyPos = enemy.mesh.position;
+
+                // Move towards player
+                const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
+                enemyPos.add(dir.multiplyScalar(enemy.speed * delta));
+
+                // Rotate enemy
+                enemy.mesh.rotation.x += delta * 2;
+                enemy.mesh.rotation.y += delta * 2;
+
+                // Collision with player
+                if (enemyPos.distanceTo(playerPos) < 1.0) {
+                    console.log("Game Over!");
+                    isFPSMode = false;
+                    controls.unlock();
+                    instructions.style.display = 'none';
+                    clearLevel();
+                    camera.position.set(0, 0, 5);
+                    camera.lookAt(0, 0, 0);
+                    alert("Game Over! Score: " + score);
+                    document.getElementById('shape-dropdown').value = 'cube';
+                    currentShape = createCube();
+                    scene.add(currentShape);
+
+                    // Clean up enemies and gun
+                    enemies.forEach(e => scene.remove(e.mesh));
+                    enemies = [];
+                    if (gun) {
+                        camera.remove(gun);
+                        gun = null;
+                    }
+                    score = 0;
+                    break;
+                }
+            }
         }
     } else {
         // Rotate the current shape
@@ -626,9 +807,25 @@ document.getElementById('shape-dropdown').addEventListener('change', (event) => 
         camera.position.set(0, 0, 0);
         camera.lookAt(0, 0, -1);
 
-        // Click to lock
+        // Create and attach gun to camera
+        gun = createGun();
+        camera.add(gun);
+
+        // Reset game state
+        score = 0;
+        enemies.forEach(e => scene.remove(e.mesh));
+        enemies = [];
+        lastEnemySpawnTime = performance.now();
+
+        // Click to lock and shoot
         document.addEventListener('click', () => {
-            if (isFPSMode) controls.lock();
+            if (isFPSMode) {
+                if (!controls.isLocked) {
+                    controls.lock();
+                } else {
+                    shoot();
+                }
+            }
         });
         return; // Skip adding currentShape
     }
@@ -641,6 +838,15 @@ document.getElementById('shape-dropdown').addEventListener('change', (event) => 
         clearLevel();
         camera.position.set(0, 0, 5); // Reset camera
         camera.lookAt(0, 0, 0);
+
+        // Clean up enemies and gun
+        enemies.forEach(e => scene.remove(e.mesh));
+        enemies = [];
+        if (gun) {
+            camera.remove(gun);
+            gun = null;
+        }
+        score = 0;
     }
 
     // Add new shape to scene
