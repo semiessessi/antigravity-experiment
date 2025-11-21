@@ -12,6 +12,10 @@ A hardware-accelerated WebGL application that renders 3D geometric shapes with v
 - **Cube** - Classic 6-faced shape with each face displaying a different color
 - **Dodecahedron** - 12-sided polyhedron where each pentagonal face is a solid color, with opposite faces matching
 - **Icosahedron** - 20-sided polyhedron with triangular faces, where opposite faces share the same color (10 unique colors for 10 pairs)
+- **Octahedron** - 8-sided polyhedron with triangular faces
+- **Tetrahedron** - 4-sided polyhedron with triangular faces
+- **Torus** - Donut-shaped geometry
+- **Teapot** - The classic Utah Teapot model
 
 ### ⚙️ Technical Capabilities
 - **Hardware Acceleration** - WebGL rendering with GPU acceleration for optimal performance
@@ -174,6 +178,24 @@ This project was a collaboration between the user and Antigravity. Here's who ma
 - **Git Workflow** - User requested commits/pushes, Antigravity chose commit messages and author attribution
 - **README Documentation** - User requested sections, Antigravity chose structure and content
 - **Shape Selector** - User implied need for switching, Antigravity chose dropdown implementation
+
+### 🚀 Phase 2: Expanding the Collection
+The user requested to "add 3 more shapes to this as well as the classic teapot". This expansion phase involved several interesting decisions and technical steps:
+
+#### Decisions & Selection
+- **User's Request**: Explicitly asked for "3 more shapes" + "classic teapot".
+- **Antigravity's Selection**: To complement the existing Cube, Dodecahedron, and Icosahedron, I chose:
+    - **Octahedron** & **Tetrahedron**: To complete the set of Platonic solids available in Three.js.
+    - **Torus**: To introduce a curved, non-polyhedral shape that highlights the specular lighting differently.
+- **The Teapot**: The user specifically requested the "classic teapot" (Utah Teapot), a staple of 3D graphics history.
+
+#### Technical Implementation & Challenges
+- **Teapot Availability**: The `TeapotGeometry` is not part of the core Three.js library.
+    - *Challenge*: Importing it requires accessing the `examples/jsm` directory.
+    - *Solution*: Updated the `importmap` in `index.html` to include `"three/addons/"` pointing to the JSM examples CDN.
+- **Consistent Coloring**:
+    - For the **Octahedron** (8 faces) and **Tetrahedron** (4 faces), I adapted the existing "opposite face pairing" logic to ensure they matched the aesthetic of the Dodecahedron and Icosahedron.
+    - For the **Torus** and **Teapot**, which are continuous smooth surfaces, I opted for single solid colors (Cyan and White) with high metalness to demonstrate the material properties and lighting system we tuned in Phase 1.
 
 ## Author
 
