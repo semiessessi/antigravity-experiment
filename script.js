@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { TeapotGeometry } from 'three/addons/geometries/TeapotGeometry.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
 
 // Scene setup
 const scene = new THREE.Scene();
@@ -394,13 +395,185 @@ let lastTime = performance.now();
 let frames = 0;
 let fps = 60;
 
+// FPS Mode Variables
+let moveForward = false;
+let moveBackward = false;
+let moveLeft = false;
+let moveRight = false;
+let canJump = false;
+
+let prevTime = performance.now();
+const velocity = new THREE.Vector3();
+const direction = new THREE.Vector3();
+let controls;
+let levelMeshes = [];
+let isFPSMode = false;
+
+// Initialize PointerLockControls
+controls = new PointerLockControls(camera, document.body);
+
+const instructions = document.getElementById('controls-info');
+
+controls.addEventListener('lock', function () {
+    instructions.style.display = 'none';
+});
+
+controls.addEventListener('unlock', function () {
+    if (isFPSMode) {
+        instructions.style.display = 'block';
+    }
+});
+
+scene.add(controls.getObject());
+
+const onKeyDown = function (event) {
+    switch (event.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+            moveForward = true;
+            break;
+        case 'ArrowLeft':
+        case 'KeyA':
+            moveLeft = true;
+            break;
+        case 'ArrowDown':
+        case 'KeyS':
+            moveBackward = true;
+            break;
+        case 'ArrowRight':
+        case 'KeyD':
+            moveRight = true;
+            break;
+    }
+};
+
+const onKeyUp = function (event) {
+    switch (event.code) {
+        case 'ArrowUp':
+        case 'KeyW':
+            moveForward = false;
+            break;
+        case 'ArrowLeft':
+        case 'KeyA':
+            moveLeft = false;
+            break;
+        case 'ArrowDown':
+        case 'KeyS':
+            moveBackward = false;
+            break;
+        case 'ArrowRight':
+        case 'KeyD':
+            moveRight = false;
+            break;
+    }
+};
+
+document.addEventListener('keydown', onKeyDown);
+document.addEventListener('keyup', onKeyUp);
+
+// Wolfenstein 3D style level map (1 = wall, 0 = empty)
+const levelMap = [
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+    [1, 0, 0, 0, 0, 0, 0, 0, 0, 1],
+    [1, 0, 1, 1, 0, 1, 1, 1, 0, 1],
+    [1, 0, 1, 0, 0, 0, 0, 1, 0, 1],
+    [1, 0, 1, 0, 1, 1, 0, 1, 0, 1],
+    [1, 0, 0, 0, 0, 1, 0, 0, 0, 1],
+    [1, 0, 1, 1, 0, 1, 1, 1, 0, 1],
+    [1, 0, 0, 1, 0, 0, 0, 0, 0, 1],
+    [1, 1, 0, 0, 0, 1, 1, 0, 0, 1],
+    [1, 1, 1, 1, 1, 1, 1, 1, 1, 1]
+];
+
+function createLevel() {
+    const geometry = new THREE.BoxGeometry(2, 2, 2);
+    const material = new THREE.MeshStandardMaterial({
+        color: 0x0000ff, // Blue walls like Wolfenstein
+        roughness: 0.1,
+        metalness: 0.5
+    });
+
+    const floorGeometry = new THREE.PlaneGeometry(20, 20);
+    const floorMaterial = new THREE.MeshStandardMaterial({
+        color: 0x333333,
+        roughness: 0.8,
+        metalness: 0.2
+    });
+    const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+    floor.rotation.x = -Math.PI / 2;
+    floor.position.y = -1; // Floor at feet level
+    scene.add(floor);
+    levelMeshes.push(floor);
+
+    const ceilingGeometry = new THREE.PlaneGeometry(20, 20);
+    const ceilingMaterial = new THREE.MeshStandardMaterial({
+        color: 0x1a1a1a,
+        roughness: 0.9
+    });
+    const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+    ceiling.rotation.x = Math.PI / 2;
+    ceiling.position.y = 1; // Ceiling
+    scene.add(ceiling);
+    levelMeshes.push(ceiling);
+
+    for (let z = 0; z < levelMap.length; z++) {
+        for (let x = 0; x < levelMap[z].length; x++) {
+            if (levelMap[z][x] === 1) {
+                const wall = new THREE.Mesh(geometry, material);
+                // Map coordinates to world coordinates (centered)
+                wall.position.x = (x - 5) * 2;
+                wall.position.z = (z - 5) * 2;
+                wall.position.y = 0;
+                scene.add(wall);
+                levelMeshes.push(wall);
+            }
+        }
+    }
+}
+
+function clearLevel() {
+    levelMeshes.forEach(mesh => scene.remove(mesh));
+    levelMeshes = [];
+}
+
 // Animation loop
 function animate() {
     requestAnimationFrame(animate);
 
-    // Rotate the current shape
-    currentShape.rotation.x += 0.01;
-    currentShape.rotation.y += 0.01;
+    const time = performance.now();
+
+    if (isFPSMode) {
+        if (controls.isLocked === true) {
+            const delta = (time - prevTime) / 1000;
+
+            velocity.x -= velocity.x * 10.0 * delta;
+            velocity.z -= velocity.z * 10.0 * delta;
+
+            direction.z = Number(moveForward) - Number(moveBackward);
+            direction.x = Number(moveRight) - Number(moveLeft);
+            direction.normalize(); // this ensures consistent movements in all directions
+
+            if (moveForward || moveBackward) velocity.z -= direction.z * 40.0 * delta;
+            if (moveLeft || moveRight) velocity.x -= direction.x * 40.0 * delta;
+
+            controls.moveRight(-velocity.x * delta);
+            controls.moveForward(-velocity.z * delta);
+
+            // Simple boundary check (keep within the 20x20 area roughly)
+            if (controls.getObject().position.x < -9) controls.getObject().position.x = -9;
+            if (controls.getObject().position.x > 9) controls.getObject().position.x = 9;
+            if (controls.getObject().position.z < -9) controls.getObject().position.z = -9;
+            if (controls.getObject().position.z > 9) controls.getObject().position.z = 9;
+        }
+    } else {
+        // Rotate the current shape
+        if (currentShape) {
+            currentShape.rotation.x += 0.01;
+            currentShape.rotation.y += 0.01;
+        }
+    }
+
+    prevTime = time;
 
     // Calculate FPS
     frames++;
@@ -443,10 +616,37 @@ document.getElementById('shape-dropdown').addEventListener('change', (event) => 
         currentShape = createTorus();
     } else if (event.target.value === 'teapot') {
         currentShape = createTeapot();
+    } else if (event.target.value === 'fps') {
+        isFPSMode = true;
+        currentShape = null; // No single shape in FPS mode
+        createLevel();
+        instructions.style.display = 'block';
+
+        // Reset camera for FPS
+        camera.position.set(0, 0, 0);
+        camera.lookAt(0, 0, -1);
+
+        // Click to lock
+        document.addEventListener('click', () => {
+            if (isFPSMode) controls.lock();
+        });
+        return; // Skip adding currentShape
+    }
+
+    // If switching away from FPS mode
+    if (isFPSMode && event.target.value !== 'fps') {
+        isFPSMode = false;
+        controls.unlock();
+        instructions.style.display = 'none';
+        clearLevel();
+        camera.position.set(0, 0, 5); // Reset camera
+        camera.lookAt(0, 0, 0);
     }
 
     // Add new shape to scene
-    scene.add(currentShape);
+    if (currentShape) {
+        scene.add(currentShape);
+    }
 });
 
 // Start animation
