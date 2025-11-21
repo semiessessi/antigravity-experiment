@@ -683,8 +683,41 @@ function animate() {
             if (moveForward || moveBackward) velocity.z -= direction.z * 40.0 * delta;
             if (moveLeft || moveRight) velocity.x -= direction.x * 40.0 * delta;
 
-            controls.moveRight(-velocity.x * delta);
-            controls.moveForward(-velocity.z * delta);
+            // Wall collision detection for player
+            const playerPos = controls.getObject().position;
+            const collisionDistance = 0.5; // Player collision radius
+
+            // Check collision in movement direction before applying movement
+            let canMoveForward = true;
+            let canMoveRight = true;
+
+            if (velocity.z !== 0) {
+                const forwardDir = new THREE.Vector3(0, 0, -1);
+                forwardDir.applyQuaternion(controls.getObject().quaternion);
+                forwardDir.multiplyScalar(Math.sign(-velocity.z));
+
+                raycaster.set(playerPos, forwardDir);
+                const forwardIntersects = raycaster.intersectObjects(levelMeshes);
+                if (forwardIntersects.length > 0 && forwardIntersects[0].distance < collisionDistance) {
+                    canMoveForward = false;
+                }
+            }
+
+            if (velocity.x !== 0) {
+                const rightDir = new THREE.Vector3(1, 0, 0);
+                rightDir.applyQuaternion(controls.getObject().quaternion);
+                rightDir.multiplyScalar(Math.sign(-velocity.x));
+
+                raycaster.set(playerPos, rightDir);
+                const rightIntersects = raycaster.intersectObjects(levelMeshes);
+                if (rightIntersects.length > 0 && rightIntersects[0].distance < collisionDistance) {
+                    canMoveRight = false;
+                }
+            }
+
+            // Apply movement only if no collision
+            if (canMoveRight) controls.moveRight(-velocity.x * delta);
+            if (canMoveForward) controls.moveForward(-velocity.z * delta);
 
             // Simple boundary check (keep within the 20x20 area roughly)
             if (controls.getObject().position.x < -9) controls.getObject().position.x = -9;
@@ -693,7 +726,6 @@ function animate() {
             if (controls.getObject().position.z > 9) controls.getObject().position.z = 9;
 
             // Enemy Logic
-            const playerPos = controls.getObject().position;
 
             // Spawn Enemies
             if (time - lastEnemySpawnTime > ENEMY_SPAWN_RATE && enemies.length < 5) {
@@ -712,9 +744,19 @@ function animate() {
                 const enemy = enemies[i];
                 const enemyPos = enemy.mesh.position;
 
-                // Move towards player
+                // Move towards player with wall collision
                 const dir = new THREE.Vector3().subVectors(playerPos, enemyPos).normalize();
-                enemyPos.add(dir.multiplyScalar(enemy.speed * delta));
+                const moveDistance = enemy.speed * delta;
+                const newPos = enemyPos.clone().add(dir.clone().multiplyScalar(moveDistance));
+
+                // Check for wall collision before moving
+                raycaster.set(enemyPos, dir);
+                const wallIntersects = raycaster.intersectObjects(levelMeshes);
+
+                // Only move if no wall in the way or wall is far enough
+                if (wallIntersects.length === 0 || wallIntersects[0].distance > moveDistance + 0.3) {
+                    enemyPos.copy(newPos);
+                }
 
                 // Rotate enemy
                 enemy.mesh.rotation.x += delta * 2;

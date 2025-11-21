@@ -27,10 +27,12 @@ A hardware-accelerated WebGL application that renders 3D geometric shapes with v
 - **Responsive Design** - Adapts to window resizing
 - **FPS Mode (Wolfenstein 3D Style)**:
     - Explore a procedurally generated maze
+    - **Wall Collision Detection**: Players and enemies cannot pass through walls (raycasting-based)
     - **Combat System**: Wield a camera-attached gun with recoil and muzzle flash effects
     - **Enemies**: Battle against "Spiky Drones" - floating spheres with glowing red spikes that chase you
     - **Scoring**: Earn points by destroying enemies
     - **Game Over**: Don't let them touch you!
+
 
 
 ### 🎨 Color Palette
