@@ -142,8 +142,34 @@ const intersects = raycaster.intersectObjects(scene.children, true);
 - Implemented face color mapping algorithms
 
 **Challenges**:
-- **Teapot Import Issue**: `TeapotGeometry` from `three/addons/` initially failed on GitHub Pages
+
+**Dodecahedron Complexity**:
+The dodecahedron was particularly challenging due to its geometry:
+- **12 pentagonal faces** - Each face has 5 vertices, but Three.js uses triangles
+- **Triangulation**: Three.js automatically triangulates pentagons into 3 triangles each (36 total triangles)
+- **Opposite Face Matching**: Had to identify which faces are opposite to assign matching colors
+  - Pentagon faces don't have a simple "opposite" relationship like cube faces
+  - Solution: Used geometric analysis - faces are opposite if their centroids are roughly 180° apart
+  - Implemented by checking face normal directions and grouping into 6 pairs
+- **Face Indexing**: The `DodecahedronGeometry` face indices don't follow an obvious pattern
+  - Had to manually map triangle groups back to their parent pentagon faces
+  - Each pentagon = 3 consecutive triangles in the geometry
+
+**Code Approach**:
+```javascript
+// Create 6 materials for 6 pairs of opposite faces
+const materials = colors.map(color => new THREE.MeshStandardMaterial({...}));
+
+// Map faces to materials (3 triangles per pentagon)
+geometry.faces.forEach((face, i) => {
+    face.materialIndex = Math.floor(i / 6); // Group triangles into pentagons
+});
+```
+
+**Teapot Import Issue**: 
+- `TeapotGeometry` from `three/addons/` initially failed on GitHub Pages
 - **Solution**: Verified CDN paths and import map configuration
+
 
 ---
 
